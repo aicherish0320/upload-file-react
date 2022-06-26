@@ -1,4 +1,5 @@
 interface RequestOptions {
+  baseURL?: string
   method: string
   url: string
   headers?: any
@@ -20,7 +21,7 @@ export function request(options: RequestOptions): Promise<any> {
 
   return new Promise((resolve: Function, reject: Function) => {
     const xhr = new XMLHttpRequest()
-    xhr.open(options.method, options.url)
+    xhr.open(options.method, options.baseURL + options.url)
 
     for (const key in options.headers) {
       xhr.setRequestHeader(key, options.headers[key])

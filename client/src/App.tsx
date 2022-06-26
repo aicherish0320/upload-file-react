@@ -17,8 +17,15 @@ function App() {
   useEffect(() => {
     let objectURL: string
     if (currentFile) {
-      objectURL = window.URL.createObjectURL(currentFile)
-      setObjectURL(objectURL)
+      // 图片预览1
+      // objectURL = window.URL.createObjectURL(currentFile)
+      // setObjectURL(objectURL)
+      // 图片预览2
+      const reader = new FileReader()
+      reader.addEventListener('load', () => {
+        setObjectURL(reader.result as string)
+      })
+      reader.readAsDataURL(currentFile)
     }
 
     return () => {
@@ -54,8 +61,8 @@ function App() {
   return (
     <Row>
       <Col span={12}>
-        <Input type='file' style={{ width: 399 }} onChange={handleChange} />
-        <Button type='primary' onClick={handleFileUpload}>
+        <Input type="file" style={{ width: 399 }} onChange={handleChange} />
+        <Button type="primary" onClick={handleFileUpload}>
           上传
         </Button>
       </Col>
