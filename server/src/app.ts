@@ -4,7 +4,7 @@ import { INTERNAL_SERVER_ERROR } from 'http-status-codes'
 import createError from 'http-errors'
 import cors from 'cors'
 import path from 'path'
-import fs from 'fs-extra'
+import fse from 'fs-extra'
 import multiparty from 'multiparty'
 
 const PUBLIC_DIR = path.resolve(__dirname, 'public')
@@ -25,7 +25,7 @@ app.post('/upload', async (req: Request, res: Response, next: NextFunction) => {
 
     const fileName = fields.fileName[0]
     const chunk = files.chunk[0]
-    await fs.move(chunk.path, path.resolve(PUBLIC_DIR, fileName), {
+    await fse.move(chunk.path, path.resolve(PUBLIC_DIR, fileName), {
       overwrite: true
     })
 
