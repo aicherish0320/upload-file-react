@@ -50,6 +50,39 @@ app.get(
   }
 )
 
+app.get('/verify/:fileName', async (req: Request, res: Response) => {
+  const { fileName } = req.params
+  const filePath = path.resolve(PUBLIC_DIR, fileName)
+  const existFile = await fse.pathExists(filePath)
+  // 秒传
+  if (existFile) {
+    return {
+      success: true,
+      needUpload: false
+    }
+  }
+  const tempDir = path.resolve(TEMP_DIR, fileName)
+  const exist = await fse.pathExists(tempDir)
+  let uploadList: any[] = []
+  if (exist) {
+    uploadList = await fse.readdir(tempDir)
+    uploadList = await Promise.all(
+      uploadList.map(async (fileName: string) => {
+        const stat = await fse.stat(path.resolve(tempDir, fileName))
+        return {
+          fileName,
+          size: stat.size
+        }
+      })
+    )
+  }
+  res.json({
+    success: true,
+    needUpload: true,
+    uploadList
+  })
+})
+
 // app.post('/upload', async (req: Request, res: Response, next: NextFunction) => {
 //   const form = new multiparty.Form()
 //   form.parse(req, async (err, fields, files) => {

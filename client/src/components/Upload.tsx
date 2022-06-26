@@ -7,6 +7,13 @@ interface Part {
   size: number
   chunkName?: string
   fileName?: string
+  loaded?: number
+  percent?: number
+}
+
+interface Uploaded {
+  fileName: string
+  size: number
 }
 
 const FILE_MAX_SIZE = 1024 * 500
@@ -47,7 +54,6 @@ function Upload() {
 
     // 分片上传
     let partList: Part[] = createChunks(currentFile)
-    console.log('partList >>> ', partList)
     // 先计算这个对象哈希值 用来实现秒传功能
     // 通过 web worker 子进程来计算 哈希
     const fileHash = await calculateHash(partList)
@@ -65,8 +71,20 @@ function Upload() {
     await uploadParts(partList, fileName)
   }
 
+  async function verify(fileName: string) {
+    return await request({
+      method: 'get',
+      url: `/verify/${fileName}`
+    })
+  }
+
   async function uploadParts(partList: Part[], fileName: string) {
-    let requests = createRequests(partList, fileName)
+    const { needUpload, uploadList } = await verify(fileName)
+    if (!needUpload) {
+      message.success('秒传成功')
+    }
+
+    let requests = createRequests(partList, uploadList, fileName)
     await Promise.all(requests)
     await request({
       url: `/merge/${fileName}`,
@@ -74,23 +92,53 @@ function Upload() {
     })
   }
 
-  function createRequests(partList: Part[], fileName: string) {
-    return partList.map((part: Part) =>
-      request({
-        url: `/upload/${fileName}/${part.chunkName}`,
-        method: 'POST',
-        headers: { 'Content-Type': 'application/octet-stream' },
-        data: part.chunk
+  function createRequests(
+    partList: Part[],
+    uploadList: Uploaded[],
+    fileName: string
+  ) {
+    return partList
+      .filter((part: Part) => {
+        const uploadFile = uploadList.find(
+          (item) => item.fileName === part.chunkName
+        )
+        if (!uploadFile) {
+          part.loaded = 0
+          part.percent = 0
+          return true
+        }
+        if (uploadFile.size < part.chunk.size) {
+          part.loaded = uploadFile.size
+          part.percent = Number(
+            ((part.loaded / part.chunk.size) * 100).toFixed(2)
+          )
+          return true
+        }
+        return false
       })
-    )
+      .map((part: Part) =>
+        request({
+          url: `/upload/${fileName}/${part.chunkName}`,
+          method: 'POST',
+          headers: { 'Content-Type': 'application/octet-stream' },
+          data: part.chunk
+        })
+      )
   }
-
+  function handlePause() {}
+  function handleResume() {}
   return (
     <Row>
       <Col span={12}>
         <Input type="file" style={{ width: 399 }} onChange={handleChange} />
         <Button type="primary" onClick={handleFileUpload}>
           上传
+        </Button>
+        <Button type="primary" onClick={handlePause}>
+          暂停
+        </Button>
+        <Button type="primary" onClick={handleResume}>
+          恢复
         </Button>
       </Col>
       <Col span={12}>
