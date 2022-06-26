@@ -5,9 +5,10 @@ const port = process.env.PORT || 3001
 
 const server = http.createServer(app)
 
-app.listen(port)
+app.listen(port, onListening)
+
 server.on('error', onError)
-server.on('listening', onListening)
+// server.on('listening', onListening)
 
 function onError(error: any) {
   console.log(error)

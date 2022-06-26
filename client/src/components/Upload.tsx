@@ -2,11 +2,22 @@ import React, { ChangeEvent, useEffect, useState } from 'react'
 import { Row, Col, Input, Image, Button, message } from 'antd'
 import { request } from '../utils'
 
-const FILE_MAX_SIZE = 1024 * 50
+interface Part {
+  chunk: Blob
+  size: number
+  chunkName?: string
+  fileName?: string
+}
+
+const FILE_MAX_SIZE = 1024 * 500
+const DEFAULT_SIZE = 1024 * 10
 
 function Upload() {
   const [currentFile, setCurrentFile] = useState<File>()
   const [objectURL, setObjectURL] = useState<string>('')
+  const [hashPercent, setHashPercent] = useState<number>(0)
+  const [fileName, setFileName] = useState<string>('')
+  const [partList, setPartList] = useState<Part[]>([])
 
   function handleChange(event: ChangeEvent<HTMLInputElement>) {
     const file: File = event.target.files![0]
@@ -16,15 +27,8 @@ function Upload() {
   useEffect(() => {
     let objectURL: string
     if (currentFile) {
-      // 图片预览1
-      // objectURL = window.URL.createObjectURL(currentFile)
-      // setObjectURL(objectURL)
-      // 图片预览2
-      const reader = new FileReader()
-      reader.addEventListener('load', () => {
-        setObjectURL(reader.result as string)
-      })
-      reader.readAsDataURL(currentFile)
+      objectURL = window.URL.createObjectURL(currentFile)
+      setObjectURL(objectURL)
     }
 
     return () => {
@@ -37,24 +41,48 @@ function Upload() {
       message.error('请选择上传文件')
       return
     }
-    if (!allowUpload(currentFile)) {
-      return
-    }
+    // if (!allowUpload(currentFile)) {
+    //   return
+    // }
 
-    const formData = new FormData()
-    formData.append('chunk', currentFile)
-    formData.append('fileName', currentFile.name)
+    // 分片上传
+    let partList: Part[] = createChunks(currentFile)
+    console.log('partList >>> ', partList)
+    // 先计算这个对象哈希值 用来实现秒传功能
+    // 通过 web worker 子进程来计算 哈希
+    const fileHash = await calculateHash(partList)
+    const lastDotIndex = currentFile.name.lastIndexOf('.')
+    const extName = currentFile.name.slice(lastDotIndex)
+    const fileName = `${fileHash}${extName}`
+    setFileName(fileName)
+    partList = partList.map(({ chunk, size }, index) => ({
+      fileName,
+      chunkName: `${fileName}-${index}`,
+      chunk,
+      size
+    }))
+    setPartList(partList)
+    await uploadParts(partList, fileName)
+  }
 
-    try {
-      const ret = await request({
-        method: 'post',
-        url: '/upload',
-        data: formData
+  async function uploadParts(partList: Part[], fileName: string) {
+    let requests = createRequests(partList, fileName)
+    await Promise.all(requests)
+    await request({
+      url: `/merge/${fileName}`,
+      method: 'get'
+    })
+  }
+
+  function createRequests(partList: Part[], fileName: string) {
+    return partList.map((part: Part) =>
+      request({
+        url: `/upload/${fileName}/${part.chunkName}`,
+        method: 'POST',
+        headers: { 'Content-Type': 'application/octet-stream' },
+        data: part.chunk
       })
-      console.log(ret)
-    } catch (error) {
-      console.log(error)
-    }
+    )
   }
 
   return (
@@ -70,6 +98,33 @@ function Upload() {
       </Col>
     </Row>
   )
+}
+
+function calculateHash(partList: Part[]) {
+  return new Promise((resolve) => {
+    const worker = new Worker('/hash.js')
+    worker.postMessage({ partList })
+    worker.onmessage = (event) => {
+      const { percent, hash } = event.data
+      console.log('percent >>> ', percent)
+
+      if (hash) {
+        resolve(hash)
+      }
+    }
+  })
+}
+
+function createChunks(file: File): Part[] {
+  let current = 0
+  let partList: Part[] = []
+  while (current < file.size) {
+    const chunk = file.slice(current, current + DEFAULT_SIZE)
+    partList.push({ chunk, size: chunk.size })
+    current += DEFAULT_SIZE
+  }
+
+  return partList
 }
 
 function isValidFileType(file: File) {

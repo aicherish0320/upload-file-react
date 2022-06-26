@@ -51,6 +51,7 @@ export const mergeChunks = async (
   const chunkFiles = await fse.readdir(chunksDir)
   // 按文件名升序排列
   chunkFiles.sort((a, b) => Number(a.split('-')[1]) - Number(b.split('-')[1]))
+
   await Promise.all(
     chunkFiles.map((item, index) =>
       pipeStream(
@@ -63,5 +64,3 @@ export const mergeChunks = async (
   )
   await fse.rmdir(chunksDir)
 }
-
-mergeChunks('lisa2.jpg')
