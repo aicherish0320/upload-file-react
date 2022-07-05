@@ -29,3 +29,5 @@ self.onmessage = async (event) => {
   self.postMessage({ percent: 100, hash: spark.end() })
   self.close()
 }
+
+// File => 多个 Blob => 读取 Blob 读成 ArrayBuffer => spark 计算哈希值

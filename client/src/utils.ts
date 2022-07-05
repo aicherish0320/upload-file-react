@@ -4,6 +4,8 @@ interface RequestOptions {
   url: string
   headers?: any
   data?: any
+  setXHR?: any
+  onProgress?: any
 }
 
 export function request(options: RequestOptions): Promise<any> {
@@ -27,9 +29,9 @@ export function request(options: RequestOptions): Promise<any> {
       xhr.setRequestHeader(key, options.headers[key])
     }
 
-    xhr.send(options.data)
-
     xhr.responseType = 'json'
+
+    xhr.upload.onprogress = options.onProgress
 
     xhr.onreadystatechange = () => {
       if (xhr.readyState === 4) {
@@ -40,5 +42,10 @@ export function request(options: RequestOptions): Promise<any> {
         }
       }
     }
+    if (options.setXHR) {
+      options.setXHR(xhr)
+    }
+
+    xhr.send(options.data)
   })
 }

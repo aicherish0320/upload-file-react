@@ -49,7 +49,7 @@ app.get(
     res.json({ success: true })
   }
 )
-
+// 每次先计算 hash 值
 app.get('/verify/:fileName', async (req: Request, res: Response) => {
   const { fileName } = req.params
   const filePath = path.resolve(PUBLIC_DIR, fileName)

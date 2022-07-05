@@ -1,7 +1,7 @@
 import path from 'path'
 import fse, { WriteStream } from 'fs-extra'
 
-const DEFAULT_SIZE = 10 * 1024
+const DEFAULT_SIZE = 50 * 1024
 export const TEMP_DIR = path.resolve(__dirname, 'temp')
 export const PUBLIC_DIR = path.resolve(__dirname, 'public')
 
